@@ -13,12 +13,14 @@ var nightmare = new Nightmare({
 	show:true
 })
 var roundsLeft = 330 + Math.floor(Math.random() * 20)
+var username = process.argv[2]||0
+username = isNaN(username)?username:auth.username[username]
 
 function login(){
 	return nightmare
 		.goto('https://www.nitrotype.com/race')
 		.click('.login-link')
-		.insert('[name=username]',auth.username)
+		.insert('[name=username]',username)
 		.insert('[name=password]',auth.password)
 		.click('.login-form .submit')
 		.then(go)
