@@ -12,7 +12,7 @@ var nightmare = new Nightmare({
 	executionTimeout: 2*60*1000,
 	show:true
 })
-var roundsLeft = 200
+var roundsLeft = 200 + Math.floor(Math.random() * 20)
 
 function login(){
 	return nightmare
