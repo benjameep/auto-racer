@@ -8,12 +8,12 @@ var nightmare = new Nightmare({
     preload: path.resolve(__dirname,'nitrohack.js'),
 		webSecurity: false,
   },
-	waitTimeout: 2*60*1000,
-	executionTimeout: 2*60*1000,
-	show:true
+	waitTimeout: 1.5*60*1000,
+	executionTimeout: 1.5*60*1000,
+	show:process.argv.includes('--show') || process.argv.includes('-s')
 })
-var roundsLeft = 330 + Math.floor(Math.random() * 20)
-var username = process.argv[2]||0
+var roundsLeft = 220 + Math.floor(Math.random() * 20)
+var username = process.argv.filter(n => !n.match(/^-/))[2]||0
 username = isNaN(username)?username:auth.username[username]
 
 function login(){
