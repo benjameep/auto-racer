@@ -15,7 +15,7 @@ var nightOptions = {
 
 class Bot{
 	constructor(arg){
-		this.roundsLeft = 220 + Math.floor(Math.random() * 20)
+		this.roundsLeft = 300 + Math.floor(Math.random() * 20)
 		this.username = isNaN(arg)?arg:auth.username[arg]
 		this.nightmare = new Nightmare(nightOptions)
 		this.login()
