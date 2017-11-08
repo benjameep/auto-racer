@@ -28,7 +28,7 @@ class Bot{
 			.insert('[name=password]',auth.password)
 			.click('.login-form .submit')
 			.then(() => this.go.call(this))
-			.catch(console.error)
+			.catch(() => this.login.call(this))
 	}
 
 	go(){
