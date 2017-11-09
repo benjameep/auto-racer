@@ -1,5 +1,4 @@
 var Nightmare = require('nightmare')
-require('nightmare-window-manager')(Nightmare);
 var path = require('path')
 var auth = require('./auth')
 var nightOptions = {
