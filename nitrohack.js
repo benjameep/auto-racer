@@ -124,8 +124,7 @@ class Race {
 	}
 	updateRacers(data) {
 		data.racers.forEach(r => this.racers[r.u].update(r,data.secs))
-		console.log(this.racersArray.map(r => Math.round(r.LPMS*60000/5)).join(' '))
-//		console.log(this.bot.name)
+		console.log(this.racersArray.map(r => Math.round(r.LPMS*60000/5)).join(' '),this.bot.name)
 	}
 	getMyPosition(secs) {
 		return this.bot.getPosition(secs,this.getValidOpponents())
