@@ -1,3 +1,6 @@
+/* TODO */
+// On unexpected connection close, still callback
+
 const WebSocket = require('ws')
 const qs = require('qs')
 
@@ -28,7 +31,7 @@ class WsHandler {
 		}), {
 			origin: 'https://www.nitrotype.com',
 			host: 'realtime2.nitrotype.com',
-			'force new connection': true,
+//			'force new connection': true,
 			protocolVersion: 13,
 			headers: {
 				Cookie: racer.cookies.map(c => c.name + '=' + c.value).join('; ')
@@ -37,6 +40,7 @@ class WsHandler {
 		// attach our listeners
 		this.ws.onopen = () => this.onopen.call(this)
 		this.ws.onmessage = data => this.onmessage.call(this, data)
+		this.ws.onclose = data => this.onclose.call(this, data)
 		// create our instance of the race
 		this.race = new Race(racer)
 	}
@@ -71,7 +75,7 @@ class WsHandler {
 			this.send(this.race.getMyPosition(data.secs))
 			// check if we finished
 			if(this.race.racers[this.race.bot.userID].done)
-				this.finish()
+				this.ws.close()
 		} else if(data.l){
 			// got the lesson text
 			this.race.bot.textLength = data.l.length
@@ -81,6 +85,14 @@ class WsHandler {
 		} else {
 			// starting the race
 			console.log(this.race.racersArray.map(r => r.name).join(' | '))
+		}
+	}
+	onclose(data){
+		var bot = this.race.racers[this.race.bot.userID]
+		if(bot){
+			this.callback(bot.name,bot.place,Math.round(bot.LPMS*60000/5)+'['+bot.avgSpeed+']',bot.session+'['+bot.totalRaces+']',"$"+bot.money,new Date().toLocaleTimeString())
+		} else {
+			this.callback('Error: wasClean',data.wasClean,data.reason)
 		}
 	}
 	send(payload){
@@ -101,11 +113,6 @@ class WsHandler {
 		}
 		return parsed
 	}
-	finish(){
-		this.ws.close()
-		var bot = this.race.racers[this.race.bot.userID]
-		this.callback(bot.name,bot.place,bot.money,Math.round(bot.LPMS*60000/5),bot.avgSpeed,bot.session,bot.totalRaces)
-	}
 }
 
 class Race {
@@ -118,13 +125,13 @@ class Race {
 	}
 	addRacer(racer) {
 		var newRacer = new Racer(racer)
-		console.log('adding',newRacer.name)
+		process.stdout.write('adding '+newRacer.name+'           \r')
 		this.racers[racer.userID] = newRacer
 		this.racersArray.push(newRacer)
 	}
 	updateRacers(data) {
 		data.racers.forEach(r => this.racers[r.u].update(r,data.secs))
-		console.log(this.racersArray.map(r => Math.round(r.LPMS*60000/5)).join(' '),this.bot.name)
+		process.stdout.write(this.racersArray.map(r => Math.round(r.LPMS*60000/5)).join(' ')+' '+this.bot.name+'           \r')
 	}
 	getMyPosition(secs) {
 		return this.bot.getPosition(secs,this.getValidOpponents())
@@ -146,49 +153,65 @@ class Bot {
 		this.LPMS = this.MINLPMS + Math.random()*(this.MAXLPMS - this.MINLPMS)
 		this.nitrosUsed =  0
 		this.skipped =  0
-		this.accuracy =  90
+		this.accuracy =  95
 		this.nStack = []
 		this.position =  0
 		this.errors = 0
 	}
 	getPosition(secs,canidates){
 		var old = this.position
+		this.usedNitro = false
+		
 		this.position = /*this.beatRandomPerson(canidates) ||*/ this.LPMS*secs
+		
 		// don't go past the end, or faster than our max
 		this.position = Math.min(this.position,this.textLength,this.MAXLPMS*secs)
+		
 		// don't go slower than our min
 		this.position = Math.max(this.position,this.MINLPMS*secs)
+		
 		// can't have typed a fraction of a letter
 		this.position = Math.round(this.position)
+		
 		// cause all humans make mistakes
 		var numErrors = this.getNumErrors(this.position - old)
 		this.errors += numErrors
-		var updateData = {
+		
+		// occasionally use nitro even if the person we are following (if any) dosen't use one
+		this.calcUseNitro()
+		
+		return {
 			t: this.position,
 			e: numErrors? this.errors += numErrors : undefined,
 			s: this.usedNitro ? this.skipped : undefined,
 			n: this.usedNitro ? this.nitrosUsed : undefined,
 		}
-		this.usedNitro = false
-		return updateData
 	}
 	getNumErrors(jump){
 		if(jump <= 0 || isNaN(jump)){return 0}
 		return [...Array(jump).keys()].reduce(e => e+Boolean(Math.floor(Math.random()*(100/this.accuracy))),0)
 	}
 	useNitro(jump){
-		this.nitrosUsed++
-		this.skipped += jump
-		this.usedNitro = true
+		if(this.nitrosUsed < 3){
+			this.nitrosUsed++
+			this.skipped += jump
+			this.usedNitro = true
+		}
+	}
+	calcUseNitro(){
+		if(Math.floor(Math.random()*100) == 72){ // if it chooses my favorite number
+			this.useNitro(4)
+			this.position += 4
+		} 
 	}
 	beatRandomPerson(canidates){
 		// 		If we are following someone, and they haven't stopped
 		if(this.following && canidates.length){
 			// if they used a nitro
-			if(this.following.usedNitro && this.nitrosUsed < 3){
+			if(this.following.usedNitro){
 				console.log('using a nitro like them',this.following.usedNitro)
 				this.useNitro(this.following.usedNitro)
-				this.following.usedNitro = 0
+				this.following.usedNitro = false
 			}
 			// go a couple letters ahead of where we think they are going to be
 			return this.following.guess+2

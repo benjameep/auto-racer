@@ -1,3 +1,6 @@
+/* TODO */
+// catch errors thrown in the race
+
 const fs = require('fs')
 const path = require('path')
 const updateCookies = require('./updateCookies')
@@ -25,7 +28,7 @@ function main(){
 
 function raceLoop(bot){
 	nitrohack.race(bot,function(){
-		fs.appendFileSync(path.join(__dirname,'races.log'),[...arguments].join(' ')+'\n')
+		fs.appendFileSync(path.join(__dirname,'races.log'),[...arguments].join('\t')+'\n')
 		if(Date.now() < stopTime)
 			raceLoop(bot)
 	})
