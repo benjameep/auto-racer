@@ -2,7 +2,7 @@ const fs = require('fs')
 const updateCookies = require('./updateCookies')
 const nitrohack = require('./nitrohack')
 
-const stopTime = Date.now() + 5 * 60 * 60 * 1000 // (5 minutes)
+const stopTime = new Date((new Date()).getTime() + 60*60000) // (one hour)
 			
 function getBots(){ 
 	var users = process.argv.slice(2).filter(n => !n.match(/^-/))
