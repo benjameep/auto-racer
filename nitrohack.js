@@ -142,9 +142,9 @@ class Bot {
 	constructor(racer) {
 		this.userID = racer.userID
 		this.name = racer.username
-		this.LPMS =  (WPM*5/60000)
-		this.MAXLPMS =  this.LPMS*1.20
-		this.MINLPMS =  this.LPMS*0.80
+		this.MAXLPMS =  (WPM*5/60000)*1.20
+		this.MINLPMS =  (WPM*5/60000)*0.80
+		this.LPMS = this.MINLPMS + Math.random()*(this.MAXLPMS - this.MINLPMS)
 		this.nitrosUsed =  0
 		this.skipped =  0
 		this.accuracy =  90
@@ -154,7 +154,8 @@ class Bot {
 	}
 	getPosition(secs,canidates){
 		var old = this.position
-		this.position = this.beatRandomPerson(canidates) || this.LPMS*secs
+//		this.position = this.beatRandomPerson(canidates) || this.LPMS*secs
+		this.position = this.LPMS*secs
 		// don't go past the end, or faster than our max
 		this.position = Math.min(this.position,this.textLength,this.MAXLPMS*secs)
 		// don't go slower than our min
