@@ -188,7 +188,7 @@ class Bot {
 			// if they used a nitro
 			if(this.following.usedNitro && this.nitrosUsed < 3){
 				console.log('using a nitro like them',this.following.usedNitro)
-				useNitro(this.following.usedNitro)
+				this.useNitro(this.following.usedNitro)
 				this.following.usedNitro = 0
 			}
 			// go a couple letters ahead of where we think they are going to be
