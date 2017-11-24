@@ -1,226 +1,243 @@
-window.__nightmare = {};
-__nightmare.ipc = require('electron').ipcRenderer;
+const WebSocket = require('ws')
+const qs = require('qs')
 
-var ws
-var old = window.WebSocket
-var fake = function(){
-	ws = new old(...arguments)
-	ws.addEventListener('message', onMessage)
-	return ws
+const RECENT_BIAS = 0.3
+const WPM = 31
+
+Array.prototype.avg = function () {
+	return this.reduce((a, b) => a + b, 0) / this.length
 }
-window.WebSocket = fake
-
-var RecentBias = 0.3
-window.userInfo = localStorage["A=2J6C"] && JSON.parse(decode(localStorage["A=2J6C"]).split('').reverse().join(''))
-window.textLength = 0
-window.racers = {}
-window.me = {
-	LPMS: (73*5/60000),
-	MAXLPMS: (112*5/60000),
-	nitrosUsed: 0,
-	skipped: 0,
-	accuracy: 97,
-	nStack:[],
-	position: 0,
-	errors:0,
-	eStack:[],
-	flexMargin: 5
+Array.prototype.pick = function () {
+	return this[Math.floor(Math.random() * this.length)]
 }
 
-Array.prototype.avg = function(){
-	return this.reduce((a,b) => a+b,0)/this.length
-}
-Array.prototype.pick = function(){
-	return this[Math.floor(Math.random()*this.length)]
+module.exports.race = function(bot,cb){
+	new WsHandler(bot,cb)
 }
 
-function addErrors(jump){
-	if(jump <= 0 || isNaN(jump)){return}
-	var randBool = chance => Boolean(Math.floor(Math.random()*(100/chance)))
-	var numErrors = [...Array(jump).keys()].reduce(e => e+randBool(me.accuracy))
-	if(numErrors){
-		me.errors += numErrors
-		me.hadError = true
+class WsHandler {
+	constructor(racer,callback) {
+		this.callback = callback
+		// open the websocket
+		this.ws = new WebSocket('wss://realtime3.nitrotype.com/realtime/?' + qs.stringify({
+			_primuscb: Date.now() + '-0',
+			EIO: 3,
+			transport: 'websocket',
+			t: Date.now(),
+			b64: 1,
+		}), {
+			origin: 'https://www.nitrotype.com',
+			host: 'realtime2.nitrotype.com',
+			'force new connection': true,
+			protocolVersion: 13,
+			headers: {
+				Cookie: racer.cookies.map(c => c.name + '=' + c.value).join('; ')
+			}
+		})
+		// attach our listeners
+		this.ws.onopen = () => this.onopen.call(this)
+		this.ws.onmessage = data => this.onmessage.call(this, data)
+		// create our instance of the race
+		this.race = new Race(racer)
+	}
+	onopen() {
+		// Tell their server that I want to race
+		this.ws.send('4{"stream":"checkin","path":"/race","extra":{}}');
+		this.ws.send('4' + JSON.stringify({
+			stream: 'race',
+			msg: 'join',
+			payload: {
+				debugging: false,
+				avgSpeed: WPM,
+				track: 'arctic',
+				music: 'standard',
+				update: 3417
+			}
+		}))
+	}
+	onmessage(data) {
+		// parse the weirdly formatted data
+		data = this.parseMessage(data)
+		if (!data) {
+			// this discards the message if it dosen't have a payload or something
+			return;
+		}
+		if (data.speeds) {
+			// add the racers who where there before us
+			data.racers.forEach(this.race.addRacer)
+		} else if (data.secs) {
+			// got an update of racers' positions
+			this.race.updateRacers(data)
+			this.send(this.race.getMyPosition(data.secs))
+			// check if we finished
+			if(this.race.racers[this.race.bot.userID].done)
+				this.finish()
+		} else if(data.l){
+			// got the lesson text
+			this.race.bot.textLength = data.l.length
+		} else if(data.userID){
+			// adding another racer
+			this.race.addRacer(data)
+		} else {
+			// starting the race
+			console.log(this.race.racersArray.map(r => r.name).join(' | '))
+		}
+	}
+	send(payload){
+		if(this.ws.readyState != 1)
+			return
+		this.ws.send(4+JSON.stringify({
+			stream:'race',
+			msg:'update',
+			payload:payload
+		}))
+	}
+	parseMessage(m) {
+		var parsed
+		try {
+			parsed = JSON.parse(m.data.slice(1)).payload
+		} catch (e) {
+			return false
+		}
+		return parsed
+	}
+	finish(){
+		this.ws.close()
+		var bot = this.race.racers[this.race.bot.userID]
+		this.callback(bot.name,bot.place,bot.money,Math.round(bot.LPMS*60000/5),bot.avgSpeed,bot.session,bot.totalRaces)
 	}
 }
 
-function useNitro(jump){
-	++me.nitrosUsed
-	me.skipped += jump
-	me.usedNitro = true
-}
-
-function onMessage(e){
-	var data = parseMessage(e.data)
-	if(!data){
-		return
-	} else if(data.racers){
-		var oldPosition = me.position
-		// make all of our guesses
-		updateRacers(data)
-		var defaultSpeed = Math.round(me.LPMS*data.secs)
-		// If our avgspeed is within 5wpm of our target, choose random
-		var choice = (Math.abs(userInfo.avgSpeed - me.LPMS*60000/5)) >= me.flexMargin?beatClosestToTarget():beatRandomPerson()
-//		console.log(Math.abs(userInfo.avgSpeed - me.LPMS*60000/5) >= me.flexMargin)
-		me.position = choice || defaultSpeed
-		// don't go over the end of the text, or faster than the max
-		me.position = Math.min(me.position,textLength,Math.round(me.MAXLPMS*data.secs))
-		// Also, don't go backwards
-//		me.position = Math.max(me.position,oldPosition)
-		// Throw some errors in there to look human
-		addErrors(me.position - oldPosition)
-		// send it to their server
-		send()
-		console.log(Object.values(racers).map(r => Math.round(r.LPMS*60000/5)).join(' '))
-	} else if(data.l){
-		textLength = data.l.length
-	} else if(data.userID){
-		console.log(data.userID+" "+(data.profile.displayName || data.profile.username))
-	} else {
-		console.log(data)
+class Race {
+	constructor(racer) {
+		this.bot = new Bot(racer)
+		this.racers = {}
+		this.racersArray = []
+		this.textLength = 0
+		this.racing = true
+	}
+	addRacer(racer) {
+		var newRacer = new Racer(racer)
+		console.log('adding',newRacer.name)
+		this.racers[racer.userID] = newRacer
+		this.racersArray.push(newRacer)
+	}
+	updateRacers(data) {
+		data.racers.forEach(r => this.racers[r.u].update(r,data.secs))
+		console.log(this.racersArray.map(r => Math.round(r.LPMS*60000/5)).join(' '))
+//		console.log(this.bot.name)
+	}
+	getMyPosition(secs) {
+		return this.bot.getPosition(secs,this.getValidOpponents())
+	}
+	getValidOpponents(){
+		return this.racersArray.filter(opponent => 
+											opponent.userID != this.bot.userID && // not myself
+											!opponent.done &&  										// not already finished
+											opponent.jumps[0] != 0) 			 				// they are moving
 	}
 }
 
-function updateRacers(data){
-	data.racers.forEach(r => {
-		var car = racers[r.u] = racers[r.u] || {
-			new:0,
-			jumps:[],
-			nStack:[],
-		}
-		car.old = car.new
-		car.new = r.t || car.old
-		car.LPMS = car.new/data.secs
-		car.jumps.unshift(car.new - car.old)
-		car.guess = Math.round(car.new + (car.jumps[0] * RecentBias) + (car.jumps.avg() * (1-RecentBias)))
-		if(r.n){
-			car.nStack.push(r.s-(car.nStack[0]||0))
-		}
-		if(r.r){
-			car.done = true
-			car.place = r.r.bonuses.place
-			car.money = r.r.money
-		}
-	})
-}
-
-function getVaildOpponents(){
-	return Object.keys(racers)
-			.filter(id => id != userInfo.userID && 				 // not myself
-										racers[id].new != textLength &&  // not already finished
-										racers[id].jumps[0] != 0) 			 // they are moving
-}
-
-function beatRandomPerson(){
-	var canidates = getVaildOpponents()
-	//		 If we are following someone, and they haven't stopped
-	if(me.following && canidates.length){
-		// if they used a nitro
-		if(racers[me.following].nStack.length && me.nitrosUsed < 3){
-			console.log('using a nitro like them')
-			useNitro(racers[me.following].nStack.shift())
-		}
-		// go a couple letters ahead of where we think they are going to be
-		return racers[me.following].guess+2
-	// if we aren't following someone
-	} else if(canidates.length){
-		// choose someone to follow
-		me.following = canidates.pick()
-		console.log("following:",me.following)
+class Bot {
+	constructor(racer) {
+		this.userID = racer.userID
+		this.name = racer.username
+		this.LPMS =  (WPM*5/60000)
+		this.MAXLPMS =  this.LPMS*1.20
+		this.MINLPMS =  this.LPMS*0.80
+		this.nitrosUsed =  0
+		this.skipped =  0
+		this.accuracy =  90
+		this.nStack = []
+		this.position =  0
+		this.errors = 0
 	}
-	return false
-}
-
-function beatClosestToTarget(){
-	var canidates = getVaildOpponents()
-	var dist = id => Math.abs(me.LPMS - racers[id].LPMS)
-	//		 If we are following someone, and they haven't stopped
-	if(me.following && canidates.length){
-		// if they used a nitro
-		if(racers[me.following].nStack.length && me.nitrosUsed < 3){
-			console.log('using a nitro like them')
-			useNitro(racers[me.following].nStack.shift())
+	getPosition(secs,canidates){
+		var old = this.position
+		this.position = this.beatRandomPerson(canidates) || this.LPMS*secs
+		// don't go past the end, or faster than our max
+		this.position = Math.min(this.position,this.textLength,this.MAXLPMS*secs)
+		// don't go slower than our min
+		this.position = Math.max(this.position,this.MINLPMS*secs)
+		// can't have typed a fraction of a letter
+		this.position = Math.round(this.position)
+		// cause all humans make mistakes
+		var numErrors = this.getNumErrors(this.position - old)
+		this.errors += numErrors
+		var updateData = {
+			t: this.position,
+			e: numErrors? this.errors += numErrors : undefined,
+			s: this.usedNitro ? this.skipped : undefined,
+			n: this.usedNitro ? this.nitrosUsed : undefined,
 		}
-		// go a couple letters ahead of where we think they are going to be
-		return racers[me.following].guess+2
-	// if we aren't following someone
-	} else if(canidates.length && me.position > textLength*0.2){
-		// choose someone to follow
-		me.following = canidates.sort((a,b) => dist(a) - dist(b))[0]
-		console.log("following:",me.following)
+		this.usedNitro = false
+		return updateData
 	}
-	return false
-}
-
-function alwaysWin(){
-	var fastest = Object.keys(racers)
-						.filter(id => id != userInfo.userID)
-						.reduce((f,id) => Math.max(f,racers[id].guess||0),0)
-	// Skip last part
-	if(fastest > textLength*0.9)
-		return textLength
-	return fastest && fastest+5
-}
-
-function send(showErrors){
-	ws.send(4+JSON.stringify({
-		stream:'race',
-		msg:'update',
-		payload:{
-			t:me.position,
-			e:me.hadError && me.errors,
-			s:me.usedNitro && me.skipped,
-			n:me.usedNitro && me.nitrosUsed,
+	getNumErrors(jump){
+		if(jump <= 0 || isNaN(jump)){return 0}
+		return [...Array(jump).keys()].reduce(e => e+Boolean(Math.floor(Math.random()*(100/this.accuracy))),0)
+	}
+	useNitro(jump){
+		this.nitrosUsed++
+		this.skipped += jump
+		this.usedNitro = true
+	}
+	beatRandomPerson(canidates){
+		// 		If we are following someone, and they haven't stopped
+		if(this.following && canidates.length){
+			// if they used a nitro
+			if(this.following.usedNitro && this.nitrosUsed < 3){
+				console.log('using a nitro like them',this.following.usedNitro)
+				useNitro(this.following.usedNitro)
+				this.following.usedNitro = 0
+			}
+			// go a couple letters ahead of where we think they are going to be
+			return this.following.guess+2
+		// if we aren't following someone but we have the option to
+		} else if(canidates.length){
+			// choose someone to follow
+			this.following = canidates.pick()
+			console.log('following:',this.following.name)
 		}
-	}))
-	me.usedNitro = undefined
-	me.hadError = undefined
-}
-
-function parseMessage(m){
-	var parsed
-	try{
-		parsed = JSON.parse(m.slice(1)).payload
-	} catch(e){
 		return false
 	}
-	return parsed
 }
 
-// ROTn.js
-////////////////////////////////////////////////
-// (C) 2010 Andreas  Spindler. Permission to use, copy,  modify, and distribute
-// this software and  its documentation for any purpose with  or without fee is
-// hereby  granted.   Redistributions of  source  code  must  retain the  above
-// copyright notice and the following disclaimer.
-//
-// THE SOFTWARE  IS PROVIDED  "AS IS" AND  THE AUTHOR DISCLAIMS  ALL WARRANTIES
-// WITH  REGARD   TO  THIS  SOFTWARE   INCLUDING  ALL  IMPLIED   WARRANTIES  OF
-// MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// SPECIAL,  DIRECT,   INDIRECT,  OR  CONSEQUENTIAL  DAMAGES   OR  ANY  DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
-// OF  CONTRACT, NEGLIGENCE  OR OTHER  TORTIOUS ACTION,  ARISING OUT  OF  OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-// 
-// $Writestamp: 2010-06-09 13:07:07$
-// $Maintained at: www.visualco.de$
-
-function ROTn(text, map) {
-  // Generic ROT-n algorithm for keycodes in MAP.
-  var R = new String()
-  var i, j, c, len = map.length
-  for (i = 0; i < text.length; i++) {
-    c = text.charAt(i)
-    j = map.indexOf(c)
-    if (j >= 0) {
-      c = map.charAt((j + len / 2) % len)
-    }
-    R = R + c
-  }
-  return R;
-}
-
-function decode(text){
-  var map = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-  return ROTn(text,map).split('').reverse().join('')
+class Racer{
+	constructor(r){
+		var p = r.profile
+		this.userID = r.userID,
+		this.name = (p.tag ? `[${p.tag}]` : '') + (p.displayName || p.username)
+		this.session = p.sessionRaces
+		this.totalRaces = p.racesPlayed
+		this.level = p.level
+		this.avgSpeed = p.avgSpeed
+		this.jumps = []
+		this.nStack = []
+	}
+	getPlace(n){
+		return {
+					"2200": "1st",
+					"2090": "2nd",
+					"1980": "3rd",
+					"1870": "4th",
+					"1760": "5th",
+				}[n]
+	}
+	update(r,secs){
+		this.old = this.new || 0
+		this.new = r.t || this.old
+		this.LPMS = this.new / secs
+		this.jumps.unshift(this.new - this.old)
+		this.guess = Math.round(this.new + (this.jumps[0] * RECENT_BIAS) + (this.jumps.avg() * (1 - RECENT_BIAS)))
+		if (r.n) { // if used a nitro
+			this.usedNitro = r.s - (this.nStack[this.nStack.length-1] || 0)
+			this.nStack.push(r.s)
+		}
+		if (r.r){ // if finished the race
+			this.done = true
+			this.place = this.getPlace(r.r.bonuses.place)
+			this.money = r.r.money
+		}
+	}
 }

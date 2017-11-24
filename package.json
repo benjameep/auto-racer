@@ -9,6 +9,8 @@
   "author": "Benjamin Earl",
   "license": "ISC",
   "dependencies": {
-    "nightmare": "^2.10.0"
+    "night-map": "^2.0.2",
+    "nightmare": "^2.10.0",
+    "ws": "^3.3.1"
   }
 }
