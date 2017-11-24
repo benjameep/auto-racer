@@ -154,8 +154,7 @@ class Bot {
 	}
 	getPosition(secs,canidates){
 		var old = this.position
-//		this.position = this.beatRandomPerson(canidates) || this.LPMS*secs
-		this.position = this.LPMS*secs
+		this.position = /*this.beatRandomPerson(canidates) ||*/ this.LPMS*secs
 		// don't go past the end, or faster than our max
 		this.position = Math.min(this.position,this.textLength,this.MAXLPMS*secs)
 		// don't go slower than our min

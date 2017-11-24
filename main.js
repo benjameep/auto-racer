@@ -1,8 +1,9 @@
 const fs = require('fs')
+const path = require('path')
 const updateCookies = require('./updateCookies')
 const nitrohack = require('./nitrohack')
 
-const stopTime = new Date((new Date()).getTime() + 60*60000) // (one hour)
+const stopTime = new Date((new Date()).getTime() + 58*60000) // (58 minutes)
 			
 function getBots(){ 
 	var users = process.argv.slice(2).filter(n => !n.match(/^-/))
@@ -24,7 +25,7 @@ function main(){
 
 function raceLoop(bot){
 	nitrohack.race(bot,function(){
-		fs.appendFileSync('races.log',[...arguments].join(' ')+'\n')
+		fs.appendFileSync(path.join(__dirname,'races.log'),[...arguments].join(' ')+'\n')
 		if(Date.now() < stopTime)
 			raceLoop(bot)
 	})
