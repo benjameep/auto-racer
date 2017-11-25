@@ -32,6 +32,7 @@ class WsHandler {
 		this.ws = new WebSocket('wss://realtime3.nitrotype.com/realtime/?' + qs.stringify({
 			_primuscb: Date.now() + '-0',
 			EIO: 3,
+			'force new connection': true,
 			transport: 'websocket',
 			t: Date.now(),
 			b64: 1,
