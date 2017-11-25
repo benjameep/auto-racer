@@ -250,7 +250,7 @@ class Racer{
 	constructor(r){
 		var p = r.profile
 		this.userID = r.userID,
-		this.name = (p.tag ? `[${p.tag}]` : '') + (p.displayName || p.username)
+		this.name = p.displayName || p.username
 		this.session = p.sessionRaces
 		this.totalRaces = p.racesPlayed
 		this.level = p.level
