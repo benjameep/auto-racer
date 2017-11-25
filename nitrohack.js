@@ -101,7 +101,7 @@ class WsHandler {
 				new Date().toLocaleTimeString(),
 				this.err || '')
 		} else {
-			this.callback('Error: wasClean',data.wasClean,data.reason,this.err)
+			this.callback(bot.name,'Error: wasClean',data.wasClean,data.reason,this.err)
 		}
 	}
 	send(payload){
