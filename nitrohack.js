@@ -92,9 +92,16 @@ class WsHandler {
 		console.log('closing')
 		var bot = this.race.racers[this.race.bot.userID]
 		if(bot){
-			this.callback(bot.name,bot.place,Math.round(bot.LPMS*60000/5)+'['+bot.avgSpeed+']',bot.session+'['+bot.totalRaces+']',"$"+bot.money,new Date().toLocaleTimeString())
+			this.callback(
+				bot.name,
+				bot.place,
+				Math.round(bot.LPMS*60000/5)+'['+bot.avgSpeed+']',
+				bot.session+'['+bot.totalRaces+']',
+				"$"+bot.money,
+				new Date().toLocaleTimeString(),
+				this.err || '')
 		} else {
-			this.callback('Error: wasClean',data.wasClean,data.reason)
+			this.callback('Error: wasClean',data.wasClean,data.reason,this.err)
 		}
 	}
 	send(payload){
@@ -116,6 +123,7 @@ class WsHandler {
 		return parsed
 	}
 	quit(err){
+		this.err = err
 		this.ws.close()
 	}
 }
@@ -133,7 +141,7 @@ class Race {
 		// if we happened to run into one of our own bots, just quit
 		if(myBots.includes(racer.userID) && this.bot.userID != racer.userID){
 			console.log('ran into',racer.userID)
-			this.quit()
+			this.quit('ran into '+racer.userID)
 		}
 		var newRacer = new Racer(racer)
 		process.stdout.write('adding '+newRacer.name+'           \r')
