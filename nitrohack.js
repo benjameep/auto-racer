@@ -5,7 +5,8 @@ const WebSocket = require('ws')
 const qs = require('qs')
 
 const RECENT_BIAS = 0.3
-const WPM = 31
+
+const myBots = require('./racers.json').map(b => b.userID)
 
 Array.prototype.avg = function () {
 	return this.reduce((a, b) => a + b, 0) / this.length
@@ -31,7 +32,6 @@ class WsHandler {
 		}), {
 			origin: 'https://www.nitrotype.com',
 			host: 'realtime2.nitrotype.com',
-//			'force new connection': true,
 			protocolVersion: 13,
 			headers: {
 				Cookie: racer.cookies.map(c => c.name + '=' + c.value).join('; ')
@@ -41,8 +41,9 @@ class WsHandler {
 		this.ws.onopen = () => this.onopen.call(this)
 		this.ws.onmessage = data => this.onmessage.call(this, data)
 		this.ws.onclose = data => this.onclose.call(this, data)
+		this.WPM = racer.cookies.filter(c => c.name == '2G8DA665')[0].value
 		// create our instance of the race
-		this.race = new Race(racer)
+		this.race = new Race(racer,this.WPM,() => this.quit.call(this))
 	}
 	onopen() {
 		// Tell their server that I want to race
@@ -52,7 +53,7 @@ class WsHandler {
 			msg: 'join',
 			payload: {
 				debugging: false,
-				avgSpeed: WPM,
+				avgSpeed: this.WPM,
 				track: 'arctic',
 				music: 'standard',
 				update: 3417
@@ -88,6 +89,7 @@ class WsHandler {
 		}
 	}
 	onclose(data){
+		console.log('closing')
 		var bot = this.race.racers[this.race.bot.userID]
 		if(bot){
 			this.callback(bot.name,bot.place,Math.round(bot.LPMS*60000/5)+'['+bot.avgSpeed+']',bot.session+'['+bot.totalRaces+']',"$"+bot.money,new Date().toLocaleTimeString())
@@ -113,17 +115,26 @@ class WsHandler {
 		}
 		return parsed
 	}
+	quit(err){
+		this.ws.close()
+	}
 }
 
 class Race {
-	constructor(racer) {
-		this.bot = new Bot(racer)
+	constructor(racer,WPM,quit) {
+		this.quit = quit
+		this.bot = new Bot(racer,WPM)
 		this.racers = {}
 		this.racersArray = []
 		this.textLength = 0
 		this.racing = true
 	}
-	addRacer(racer) {
+	addRacer(racer,emergencySwitch) {
+		// if we happened to run into one of our own bots, just quit
+		if(myBots.includes(racer.userID) && this.bot.userID != racer.userID){
+			console.log('ran into',racer.userID)
+			this.quit()
+		}
 		var newRacer = new Racer(racer)
 		process.stdout.write('adding '+newRacer.name+'           \r')
 		this.racers[racer.userID] = newRacer
@@ -145,7 +156,7 @@ class Race {
 }
 
 class Bot {
-	constructor(racer) {
+	constructor(racer,WPM) {
 		this.userID = racer.userID
 		this.name = racer.username
 		this.MAXLPMS =  (WPM*5/60000)*1.20

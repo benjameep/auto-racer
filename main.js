@@ -7,11 +7,13 @@ const updateCookies = require('./updateCookies')
 const nitrohack = require('./nitrohack')
 
 const stopTime = new Date((new Date()).getTime() + 58*60000) // (58 minutes)
-			
+
 function getBots(){ 
 	var users = process.argv.slice(2).filter(n => !n.match(/^-/))
 	if(!users.length){
-		throw "please specify which players to use"
+		var now = new Date()
+		var i = (now.getHours()%4)*7+(now.getMinutes()/(60/7)|0)
+		users = [require('./racers')[i].username]
 	}
 	return updateCookies.get(users)
 }
