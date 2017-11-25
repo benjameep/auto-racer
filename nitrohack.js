@@ -14,6 +14,12 @@ Array.prototype.avg = function () {
 Array.prototype.pick = function () {
 	return this[Math.floor(Math.random() * this.length)]
 }
+String.prototype.padRight = function(n,filler){
+	return (Array(n+1).join(filler||' ') + this).slice(-n)
+}
+String.prototype.padLeft = function(n,filler){
+	return (this + Array(n+1).join(filler||' ')).slice(0,n)
+}
 
 module.exports.race = function(bot,cb){
 	new WsHandler(bot,cb)
@@ -93,11 +99,13 @@ class WsHandler {
 		var bot = this.race.racers[this.race.bot.userID]
 		if(bot){
 			this.callback(
-				bot.name,
-				bot.place,
-				Math.round(bot.LPMS*60000/5)+'['+bot.avgSpeed+']',
-				bot.session+'['+bot.totalRaces+']',
-				"$"+bot.money,
+				bot.name.padRight(14),
+				bot.place.padLeft(3),
+				String(Math.round(bot.LPMS*60000/5)||'').padRight(2),
+				`[${bot.avgSpeed}]`.padLeft(5),
+				String(bot.session).padRight(2),
+				`[${bot.totalRaces}]`.padLeft(7),
+				("$"+(bot.money||'')).padLeft(5),
 				new Date().toLocaleTimeString(),
 				this.err || '')
 		} else {
@@ -250,7 +258,7 @@ class Racer{
 	constructor(r){
 		var p = r.profile
 		this.userID = r.userID,
-		this.name = p.displayName || p.username
+		this.name = (p.tag ? `[${p.tag}]` : '') + (p.displayName || p.username)
 		this.session = p.sessionRaces
 		this.totalRaces = p.racesPlayed
 		this.level = p.level

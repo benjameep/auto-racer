@@ -30,7 +30,7 @@ function main(){
 
 function raceLoop(bot){
 	nitrohack.race(bot,function(){
-		fs.appendFileSync(path.join(__dirname,'races.log'),[...arguments].join('\t')+'\n')
+		fs.appendFileSync(path.join(__dirname,'races.log'),[...arguments].join(' ')+'\n')
 		if(Date.now() < stopTime)
 			raceLoop(bot)
 	})
