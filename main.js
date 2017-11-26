@@ -12,7 +12,7 @@ function getBots(){
 	var users = process.argv.slice(2).filter(n => !n.match(/^-/))
 	if(!users.length){
 		var now = new Date()
-		var i = (now.getHours()%4)*6+(now.getMinutes()/10|0)
+		var i = (now.getHours()%6)*4+(now.getMinutes()/15|0)
 		users = [require('./racers')[i].username]
 	}
 	return updateCookies.get(users)
