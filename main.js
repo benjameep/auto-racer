@@ -21,11 +21,7 @@ function getBots(){
 function main(){
 	var bots = getBots()
 	console.log(bots.map(b => b.userID))
-	bots.forEach((bot,i) => {
-		setTimeout(() => {
-			raceLoop(bot,i)
-		})
-	},Math.random()*3000)
+	bots.forEach((bot) => raceLoop(bot))
 }
 
 function raceLoop(bot){

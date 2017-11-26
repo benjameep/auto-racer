@@ -47,10 +47,11 @@ class WsHandler {
 		// attach our listeners
 		this.ws.onopen = () => this.onopen.call(this)
 		this.ws.onmessage = data => this.onmessage.call(this, data)
-		this.ws.onclose = data => this.onclose.call(this, data)
+//		this.ws.onclose = data => this.onclose.call(this, data)
+		this.racer = racer
 		this.WPM = racer.cookies.filter(c => c.name == '2G8DA665')[0].value
 		// create our instance of the race
-		this.race = new Race(racer,this.WPM,() => this.quit.call(this))
+		this.race = new Race(racer,this.WPM,e => this.quit.call(this,e))
 	}
 	onopen() {
 		// Tell their server that I want to race
@@ -76,14 +77,14 @@ class WsHandler {
 		}
 		if (data.speeds) {
 			// add the racers who where there before us
-			data.racers.forEach(this.race.addRacer)
+			data.racers.forEach(r => this.race.addRacer(r))
 		} else if (data.secs) {
 			// got an update of racers' positions
 			this.race.updateRacers(data)
 			this.send(this.race.getMyPosition(data.secs))
 			// check if we finished
 			if(this.race.racers[this.race.bot.userID].done)
-				this.ws.close()
+				this.quit()
 		} else if(data.l){
 			// got the lesson text
 			this.race.bot.textLength = data.l.length
@@ -95,24 +96,8 @@ class WsHandler {
 			console.log(this.race.racersArray.map(r => r.name).join(' | '))
 		}
 	}
-	onclose(data){
-		console.log('closing')
-		var bot = this.race.racers[this.race.bot.userID]
-		if(bot){
-			this.callback(
-				bot.name.padRight(14),
-				bot.place.padLeft(3),
-				String(Math.round(bot.LPMS*60000/5)||'').padRight(2),
-				`[${bot.avgSpeed}]`.padLeft(5),
-				String(bot.session).padRight(2),
-				`[${bot.totalRaces}]`.padLeft(7),
-				("$"+(bot.money||'')).padLeft(5),
-				new Date().toLocaleTimeString(),
-				this.err || '')
-		} else {
-			this.callback(bot.name,'Error: wasClean',data.wasClean,data.reason,this.err)
-		}
-	}
+//	onclose(data){
+//	}
 	send(payload){
 		if(this.ws.readyState != 1)
 			return
@@ -132,7 +117,21 @@ class WsHandler {
 		return parsed
 	}
 	quit(err){
-		this.err = err
+		var bot = this.race.racers[this.race.bot.userID]
+		if(typeof bot != 'undefined' && !err){
+			this.callback(
+				bot.name.padRight(14),
+				bot.place.padLeft(3),
+				String(Math.round(bot.LPMS*60000/5)||'').padRight(2),
+				`[${bot.avgSpeed}]`.padLeft(5),
+				String(bot.session).padRight(2),
+				`[${bot.totalRaces}]`.padLeft(7),
+				("$"+(bot.money||'')).padLeft(5),
+				new Date().toLocaleTimeString(),
+				this.err || '')
+		} else {
+			this.callback(this.racer.username,err)
+		}
 		this.ws.close()
 	}
 }
@@ -146,12 +145,13 @@ class Race {
 		this.textLength = 0
 		this.racing = true
 	}
-	addRacer(racer,emergencySwitch) {
+	addRacer(racer) {
 		// if we happened to run into one of our own bots, just quit
-		if(myBots.includes(racer.userID) && this.bot.userID != racer.userID){
-			console.log('ran into',racer.userID)
-			this.quit('ran into '+racer.userID)
-		}
+//		if(this == undefined || myBots.includes(racer.userID) && this.bot.userID != racer.userID){
+//			console.log('ran into',racer.userID)
+//			this.quit('ran into '+racer.userID)
+//			return
+//		}
 		var newRacer = new Racer(racer)
 		process.stdout.write('adding '+newRacer.name+'           \r')
 		this.racers[racer.userID] = newRacer
@@ -259,7 +259,7 @@ class Racer{
 	constructor(r){
 		var p = r.profile
 		this.userID = r.userID,
-		this.name = (p.tag ? `[${p.tag}]` : '') + (p.displayName || p.username)
+		this.name = /*(p.tag ? `[${p.tag}]` : '') +*/ (p.displayName || p.username)
 		this.session = p.sessionRaces
 		this.totalRaces = p.racesPlayed
 		this.level = p.level
