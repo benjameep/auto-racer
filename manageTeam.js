@@ -24,7 +24,9 @@ function acceptPayKick(applicant,cb){
 		if(err) return console.error(err)
 		
 		var richest = ntapi.getBot(getRichestBotname())
-		if(richest.money < 100000) return 
+		if(richest.money < 100000){
+			console.log('Not enough money!!',richest.username,'only has',richest.money)
+		}
 		richest.pay(userID,100000,(err,data) => {
 			if(err) return console.error(err)
 			
@@ -41,8 +43,13 @@ function acceptPayKick(applicant,cb){
 
 captain.getApplications((err,applications) => {
 	if(err) return console.error(err)
-	async.mapLimit(applications,5,acceptPayKick, err => {
-		fs.writeFileSync(path.join(__dirname,'paid.json'),JSON.stringify(paid))
+	async.map(Object.keys(bots),(botname,cb) => {
+		ntapi.getBot(botname).updateMoney(cb)
+	}, err => {
 		if(err) console.error(err)
+		async.map(applications,acceptPayKick, err => {
+			fs.writeFileSync(path.join(__dirname,'paid.json'),JSON.stringify(paid))
+			if(err) console.error(err)
+		})
 	})
 })

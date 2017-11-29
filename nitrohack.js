@@ -6,8 +6,6 @@ const qs = require('qs')
 
 const RECENT_BIAS = 0.3
 
-const myBots = require('./racers.json').map(b => b.userID)
-
 Array.prototype.avg = function () {
 	return this.reduce((a, b) => a + b, 0) / this.length
 }
@@ -26,10 +24,10 @@ module.exports.race = function(bot,cb){
 }
 
 class WsHandler {
-	constructor(racer,callback) {
+	constructor(bot,callback) {
 		this.callback = callback
 		// open the websocket
-		this.ws = new WebSocket('wss://realtime3.nitrotype.com/realtime/?' + qs.stringify({
+		this.ws = new WebSocket('wss://realtime1.nitrotype.com/realtime/?' + qs.stringify({
 			_primuscb: Date.now() + '-0',
 			EIO: 3,
 			'force new connection': true,
@@ -41,17 +39,17 @@ class WsHandler {
 			host: 'realtime2.nitrotype.com',
 			protocolVersion: 13,
 			headers: {
-				Cookie: racer.cookies.map(c => c.name + '=' + c.value).join('; ')
+				Cookie: bot.cookies
 			}
 		})
 		// attach our listeners
 		this.ws.onopen = () => this.onopen.call(this)
 		this.ws.onmessage = data => this.onmessage.call(this, data)
 //		this.ws.onclose = data => this.onclose.call(this, data)
-		this.racer = racer
-		this.WPM = racer.cookies.filter(c => c.name == '2G8DA665')[0].value
+		this.racer = bot
+		this.WPM = bot.speed
 		// create our instance of the race
-		this.race = new Race(racer,this.WPM,e => this.quit.call(this,e))
+		this.race = new Race(bot,this.WPM,e => this.quit.call(this,e))
 	}
 	onopen() {
 		// Tell their server that I want to race
@@ -146,12 +144,6 @@ class Race {
 		this.racing = true
 	}
 	addRacer(racer) {
-		// if we happened to run into one of our own bots, just quit
-//		if(this == undefined || myBots.includes(racer.userID) && this.bot.userID != racer.userID){
-//			console.log('ran into',racer.userID)
-//			this.quit('ran into '+racer.userID)
-//			return
-//		}
 		var newRacer = new Racer(racer)
 		process.stdout.write('adding '+newRacer.name+'           \r')
 		this.racers[racer.userID] = newRacer

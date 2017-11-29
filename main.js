@@ -3,6 +3,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const bots = require('./bots')
 const updateCookies = require('./updateCookies')
 const nitrohack = require('./nitrohack')
 
@@ -13,15 +14,9 @@ function getBots(){
 	if(!users.length){
 		var now = new Date()
 		var i = (now.getHours()%8)*3+(now.getMinutes()/20|0)
-		users = [require('./racers')[i].username]
+		users = [Object.keys(bots)[i]]
 	}
-	return updateCookies.get(users)
-}
-
-function main(){
-	var bots = getBots()
-	console.log(bots.map(b => b.userID))
-	bots.forEach((bot) => raceLoop(bot))
+	return users.map(name => bots[name])
 }
 
 function raceLoop(bot){
@@ -32,4 +27,5 @@ function raceLoop(bot){
 	})
 }
 
-main()
+
+getBots().forEach(raceLoop)
