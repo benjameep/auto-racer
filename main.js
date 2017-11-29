@@ -4,7 +4,6 @@
 const fs = require('fs')
 const path = require('path')
 const bots = require('./bots')
-const updateCookies = require('./updateCookies')
 const nitrohack = require('./nitrohack')
 
 const stopTime = new Date((new Date()).getTime() + 58*60000) // (58 minutes)
