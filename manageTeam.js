@@ -14,27 +14,26 @@ function getSponsor(){
 }
 
 function pay(applicant,amount,cb){
-	var sponsor = getSponsor()
-	var userID = applicant.userID
-	if(!sponsor){
-		console.error('Everyone is out of money')
-		return cb('Everyone is out of money')
-	}
-	sponsor.pay(userID,amount,(err,data) => {
-			if(err) {
-				if(err == '{"success":false,"data":{"amount":"You do not have enough money!"}}'){
-					// this guy is out of money, lets try another
-					console.log(sponsor.username,'is out of money, trying another...')
-					usedUp.push(sponsor.username)
-					return pay(userID,amount,cb)
+	setTimeout(() => {
+		var sponsor = getSponsor()
+		var userID = applicant.userID
+		if(!sponsor){
+			console.error('Everyone is out of money')
+			return cb('Everyone is out of money')
+		}
+		sponsor.pay(userID,amount,(err,data) => {
+				if(err) {
+						// this guy is out of money, lets try another
+						console.log(sponsor.username,'had an error, trying another...')
+						usedUp.push(sponsor.username)
+						return pay(applicant,amount,cb)
 				}
-				return console.error(err)
-			}
-			console.log(sponsor.username,'paid',applicant.displayName||applicant.username,'| money left:',data.money)
-			paid.push(userID)
-			
-			cb()
-		})
+				console.log(sponsor.username,'paid',applicant.displayName||applicant.username,'| money left:',data.money)
+				paid.push(userID)
+
+				cb()
+			})
+	},5000)
 }
 
 function acceptPayKick(applicant,cb){
@@ -50,9 +49,7 @@ function acceptPayKick(applicant,cb){
 	
 	captain.accept(userID,err => {
 		if(err) return console.error(err)
-		
 		pay(applicant,100000,payerr => {
-			
 			captain.kick(userID,err => {
 				if(payerr||err) return cb(payerr||err)
 				cb()
