@@ -48,8 +48,8 @@ class Bot{
 			}
 		}, (err, res, body) => {
 			if (err || !(body = JSON.parse(body)) || !body.success) return cb(err||JSON.stringify(body))
-			this.money = body.data.money || this.money
-			this.moneySpent = body.data.moneySpent || this.moneySpent
+			this.money = body.data.money
+			this.moneySpent = body.data.moneySpent
 			this.save(err => {
 				cb(err,body.data)
 			})
@@ -95,6 +95,7 @@ class Bot{
 	updateMoney(cb){
 		request(`https://www.nitrotype.com/racer/${this.username}`,(err, res, body) => {
 			if (err) return cb(err)
+			fs.writeFileSync('temp.html',body)
 			this.money = +body.match(/"money":(\d+)/)[1]
 			this.save(err => {
 				cb(err,this.money)
@@ -114,4 +115,10 @@ class Bot{
 
 module.exports.getBot = function(botname){
 	return new Bot(botname)
+}
+
+module.exports.getRandomBot = function(except){
+	except = except || []
+	var botnames = Object.keys(bots).filter(n => !except.includes(n))
+	return new Bot(botnames[Math.floor(Math.random()*botnames.length)])
 }
