@@ -172,10 +172,10 @@ class Bot {
 		this.name = racer.username
 		this.MAXLPMS =  lpms*1.20
 		this.MINLPMS =  lpms*0.80
-		this.LPMS = distributedRandom(lpms)
+		this.LPMS = distributedRandom(lpms,3.5)
 		this.nitrosUsed =  0
 		this.skipped =  0
-		this.accuracy =  distributedRandom(97,20)
+		this.accuracy = Math.min(distributedRandom(97,20),99)
 		this.nStack = []
 		this.position =  0
 		this.errors = 0

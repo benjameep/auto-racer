@@ -24,7 +24,7 @@ function pay(applicant,amount,cb){
 		sponsor.pay(userID,amount,(err,data) => {
 				if(err) {
 						// this guy is out of money, lets try another
-						console.log(sponsor.username,'had an error, trying another...')
+						console.log(sponsor.username,':',err)
 						usedUp.push(sponsor.username)
 						return pay(applicant,amount,cb)
 				}
