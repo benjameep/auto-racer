@@ -23,10 +23,14 @@ function pay(applicant,amount,cb){
 		}
 		sponsor.pay(userID,amount,(err,data) => {
 				if(err) {
+					if(err != '{"success":false,"data":{"amount":"This is not your friend."}}'){
 						// this guy is out of money, lets try another
 						console.log(sponsor.username,':',err)
 						usedUp.push(sponsor.username)
 						return pay(applicant,amount,cb)
+					}
+					console.log(sponsor.username,':',err)
+					return cb()
 				}
 				console.log(sponsor.username,'paid',applicant.displayName||applicant.username,'| money left:',data.money)
 				paid.push(userID)
@@ -61,7 +65,7 @@ function acceptPayKick(applicant,cb){
 captain.getApplications((err,applications) => {
 	if(err) return console.error(err)
 	if(err) console.error(err)
-	async.map(applications,acceptPayKick, err => {
+	async.mapLimit(applications,1,acceptPayKick, err => {
 		fs.writeFileSync(path.join(__dirname,'paid.json'),JSON.stringify(paid))
 		if(err) console.error(err)
 	})
