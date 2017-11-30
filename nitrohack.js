@@ -166,7 +166,7 @@ class Race {
 
 class Bot {
 	constructor(racer,WPM) {
-		var distributedRandom = s => s/3.5*Math.pow((2*Math.random()-1),3)+s
+		var distributedRandom = (s,v) => s/v*Math.pow((2*Math.random()-1),3)+s
 		var lpms = (WPM*5/60000)
 		this.userID = racer.userID
 		this.name = racer.username
@@ -175,7 +175,7 @@ class Bot {
 		this.LPMS = distributedRandom(lpms)
 		this.nitrosUsed =  0
 		this.skipped =  0
-		this.accuracy =  95
+		this.accuracy =  distributedRandom(97,20)
 		this.nStack = []
 		this.position =  0
 		this.errors = 0
