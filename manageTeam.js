@@ -25,14 +25,14 @@ function pay(applicant,amount,cb){
 				if(err) {
 					if(err != '{"success":false,"data":{"amount":"This is not your friend."}}'){
 						// this guy is out of money, lets try another
-						console.log(sponsor.username,':',err)
+						console.log(sponsor.username,':',applicant.username,err,new Date().toLocaleString())
 						usedUp.push(sponsor.username)
 						return pay(applicant,amount,cb)
 					}
-					console.log(sponsor.username,':',err)
+					console.log(sponsor.username,':',applicant.username,'Not Friend',new Date().toLocaleString())
 					return cb()
 				}
-				console.log(sponsor.username,'paid',applicant.displayName||applicant.username,'| money left:',data.money)
+				console.log(sponsor.username,'paid',applicant.username,'| money left:',data.money,new Date().toLocaleString())
 				paid.push(userID)
 
 				cb()
@@ -45,7 +45,7 @@ function acceptPayKick(applicant,cb){
 	if(paid.includes(userID)){
 		captain.deny(userID,err => {
 			if(err) return console.error(err)
-			console.log('denied',userID,'already joined')
+			console.log('denied',applicant.username,'already joined')
 			cb()
 		})
 		return
