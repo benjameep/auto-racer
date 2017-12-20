@@ -33,5 +33,4 @@ function raceLoop(bot){
 	})
 }
 
-
 getBots().forEach(raceLoop)
