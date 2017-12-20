@@ -57,7 +57,11 @@ class Bot {
 	}
 	getUhash(){
 		if(this.jar){
-			return decodeURIComponent(this.jar._jar.toJSON().cookies.filter(c => c.key =="ntuserrem")[0].value)
+			var cookies = this.jar._jar.toJSON().cookies
+			var tryFind = cookies.filter(c => c.key =="ntuserrem")
+			if(tryFind.length){
+				return decodeURIComponent(tryFind[0].value)
+			}
 		}
 	}
 	call(path, options,saveCookies) {
