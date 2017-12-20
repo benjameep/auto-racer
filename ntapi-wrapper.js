@@ -48,8 +48,8 @@ class Bot {
 		fs.writeFileSync(path.join(__dirname, 'bots.json'), JSON.stringify(bots))
 	}
 	getCookieJar() {
+		this.jar = request.jar()
 		if(this.cookies){
-			this.jar = request.jar()
 			this.cookies.split('; ').forEach(cookie => {
 				this.jar.setCookie(request.cookie(cookie), 'https://www.nitrotype.com')
 			})
