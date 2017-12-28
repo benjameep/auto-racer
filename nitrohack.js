@@ -47,7 +47,7 @@ class WsHandler {
 		this.ws.onmessage = data => this.onmessage.call(this, data)
 //		this.ws.onclose = data => this.onclose.call(this, data)
 		this.racer = bot
-		this.WPM = bot.speed
+		this.WPM = bot.speed || bot.avgSpeed
 		// create our instance of the race
 		this.race = new Race(bot,this.WPM,e => this.quit.call(this,e))
 	}
