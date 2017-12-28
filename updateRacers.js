@@ -76,5 +76,4 @@ async function useCar(prefs){
 	await updateSettings()
 	await joinTeams()
 	await buyCar()
-	await useCar([69,111,142,72,143,135])
 })()
