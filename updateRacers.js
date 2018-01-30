@@ -64,10 +64,12 @@ async function buyCar(prefs){
 	})
 }
 
-async function useCar(prefs){
+async function useCar(){
 	await ntapi.forEach(async bot => {
+		var cars = bot.cars.map(c => c[0]).sort().slice(0,10)
+		console.log(cars)
 //		var cars = bot.cars.map(c => c[0]).sort((a,b) => prefs.indexOf(b) - prefs.indexOf(a))
-		var cars = bot.cars.map(c => c[0]).filter(c => prefs.includes(c))
+//		var cars = bot.cars.map(c => c[0]).filter(c => prefs.includes(c))
 		var chosen = cars.pick()
 		await bot.useCar(chosen)
 	})
@@ -81,5 +83,5 @@ async function useCar(prefs){
 	await updateSettings()
 	await joinTeams()
 	await buyCar(prefCars)
-	await useCar(prefCars)
+//	await useCar()
 })()
