@@ -52,10 +52,12 @@ async function updateSettings(){
 	})
 }
 
-async function buyCar(){
+
+async function buyCar(prefs){
 	await ntapi.forEach(async bot => {
 		var cars = await bot.getAffordableCars()
-		cars = cars.sort((a,b) => b.carID - a.carID).slice(0,10)
+//		cars = cars.sort((a,b) => b.carID - a.carID).slice(0,10)
+		cars = cars.filter(c => prefs.includes(c.carID))
 		var chosen = cars.pick()
 		console.log(`${bot.username} is buying ${chosen.name}`)
 		await bot.buyCar(chosen.carID).catch(console.log)
@@ -64,16 +66,20 @@ async function buyCar(){
 
 async function useCar(prefs){
 	await ntapi.forEach(async bot => {
-		var cars = bot.cars.map(c => c[0]).sort((a,b) => prefs.indexOf(b) - prefs.indexOf(a))
-		await bot.useCar(cars[0])
+//		var cars = bot.cars.map(c => c[0]).sort((a,b) => prefs.indexOf(b) - prefs.indexOf(a))
+		var cars = bot.cars.map(c => c[0]).filter(c => prefs.includes(c))
+		var chosen = cars.pick()
+		await bot.useCar(chosen)
 	})
 }
 
 
 (async () => {
+	var prefCars = [106,76,75,59,58,51,68]
 	await ntapi.all.login()
 	await ntapi.all.check()
 	await updateSettings()
 	await joinTeams()
-	await buyCar()
+	await buyCar(prefCars)
+	await useCar(prefCars)
 })()
